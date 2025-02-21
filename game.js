@@ -134,13 +134,15 @@ function createStone(createX){
 
 function createBird(delay=0){
   setTimeout(()=>{
-  const birdY=Math.random()*(canvas.height-game.image.bird.height-200)+250;
+   const minY=300;
+   const maxY=canvas.height-250;
+  const birdY=Math.random()*(maxY-minY)+minY;
   game.enemys.push({
     x:canvas.width+game.image.bird.width/2,
     y:birdY,
     width:game.image.bird.width,
     height:game.image.bird.height,
-    moveX:-15-Math.floor(game.score/200),
+    moveX:-12-Math.floor(game.score/200),
     moveY:(Math.random()>0.5?1:-1)*(4+Math.floor(game.score/200)),
     image:game.image.bird
   });
@@ -149,7 +151,7 @@ function createBird(delay=0){
 
 function createEnemys(){
   if(game.enemyCountdown<=0){
-    game.enemyCountdown=Math.max(10,50-Math.floor(game.score/30));
+    game.enemyCountdown=Math.max(20,60-Math.floor(game.score/40));
     switch(Math.floor(Math.random()*3)){
       case 0:
         createStone(canvas.width+game.image.stone.width/2);
@@ -187,7 +189,7 @@ function activateBarrier(){
     game.barrierCooldown=true;
 
     setTimeout(()=>{
-      game.barrierActive=false; //３秒後解除
+      game.barrierActive=false; //5秒後解除
     },game.barrierDuration);
 
     setTimeout(()=>{
@@ -247,7 +249,7 @@ function moveFire(){
   for(const fire of game.fire){
     fire.x+=fire.moveX;
     fire.y+=fire.moveY;
-    fire.moveY+=0.3;
+    fire.moveY+=0.2;
   }
   game.fire=game.fire.filter(fire=>fire.x>-fire.width);
 }

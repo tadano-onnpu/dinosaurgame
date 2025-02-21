@@ -12,7 +12,11 @@ const game={
   image:{},
   score:0,
   state:'loading',
-  timer:null
+  timer:null,
+  barrierActive:false,
+  barrierCooldown:false,
+  barrierDuration:5000,
+  barrierCooldownTime:5000
 };
 game.bgm1.loop=true;
 game.bgm1.volume=0.3;
@@ -79,6 +83,7 @@ function ticker(){
   drawDino(); //恐竜の描画
   drawScore(); //スコアの描画
   drawFire();
+  drawBarrier();
 
   //あたり判定
   hitCheck();
@@ -175,6 +180,22 @@ function createFire(bird){
   });
 }
 
+//バリア発動
+function activateBarrier(){
+  if(!game.barrierActive&&!game.barrierCooldown){
+    game.barrierActive=true;
+    game.barrierCooldown=true;
+
+    setTimeout(()=>{
+      game.barrierActive=false; //３秒後解除
+    },game.barrierDuration);
+
+    setTimeout(()=>{
+      game.barrierCooldown=false; //５秒後クールダウン解除
+    },game.barrierCooldownTime);
+  }
+}
+
 function moveBackGrounds(){
   for(const backGround of game.backGrounds){
     backGround.x+=backGround.moveX;
@@ -264,7 +285,24 @@ function drawScore(){
   ctx.fillText(`score:${game.score}`,10,30);
 }
 
+//バリアの半円
+function drawBarrier(){
+  if(game.barrierActive){
+    ctx.beginPath();
+    ctx.arc(
+      game.dino.x,
+      game.dino.y,
+      Math.max(game.dino.width,game.dino.height)*0.6,
+      0,Math.PI*2,true
+    );
+    ctx.fillStyle='rgba(202, 237, 255, 0.4)';
+    ctx.fill();
+  }
+}
+
 function hitCheck(){
+  if(game.barrierActive)return;
+
   for(const enemy of game.enemys){
     if(
       Math.abs(game.dino.x-enemy.x)<game.dino.width*0.7/2+enemy.width*0.7/2&&
@@ -304,5 +342,8 @@ document.onkeydown=(e)=>{
   }
   if(e.code==='Enter'&&game.state==='gameover'){
     init();
+  }
+  if(e.code==='ShiftLeft'||e.code==='ShiftRight'){
+    activateBarrier();
   }
 };

@@ -15,6 +15,8 @@ const game={
   timer:null
 };
 game.bgm1.loop=true;
+game.bgm1.volume=0.3;
+game.bgm2.volume=0.3;
 
 //複数画像読み込み
 let imageLoadCounter=0;

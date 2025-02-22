@@ -2,6 +2,7 @@ const canvas=document.getElementById('canvas');
 const ctx=canvas.getContext('2d');
 const imageNames=['bird','fire','stone','dino'];
 
+//ゲーム状態を管理するオブジェクト
 const game={
   counter:0,
   backGrounds:[],
@@ -13,6 +14,7 @@ const game={
   score:0,
   state:'loading',
   timer:null,
+  //バリア
   barrierActive:false,
   barrierCooldown:false,
   barrierDuration:5000,
@@ -21,6 +23,12 @@ const game={
 game.bgm1.loop=true;
 game.bgm1.volume=0.3;
 game.bgm2.volume=0.3;
+
+//ジャンプホールド設定
+game.jumpHoldActive=false; //スキル発動中か
+game.jumpHoldCooldown=false; //クールタイム中か
+game.jumpHoldDuration=1000; //静止時間（ミリ秒）
+game.jumpHoldCooldownTime=10000; //クールタイム
 
 //複数画像読み込み
 let imageLoadCounter=0;
@@ -32,11 +40,12 @@ for (const imageName of imageNames){
     imageLoadCounter+=1;
     if(imageLoadCounter===imageNames.length){
       console.log('画像のロードが完了しました。');
-      init();
+      init(); //ゲームの初期化
     }
   }
 }
 
+//ゲームの初期化
 function init(){
   game.counter=0;
   game.enemys=[];
@@ -54,40 +63,39 @@ function init(){
   ctx.textBaseline='top';
   ctx.fillText(`Press Space key`,84,150);
   ctx.fillText(`to start.`,84,230)
+
+  //ルール説明
+  ctx.font='24px serif';
+  ctx.fillText(`『ルール』`,50,350);
+  ctx.fillText(`Spaceキーでジャンプ（2段ジャンプ可能）`,50,380);
+  ctx.fillText(`障害物（岩や鳥や炎）に当たるとゲームオーバー`,50,410);
+  ctx.fillText(`Shiftキーでバリア発動（5秒間無敵）`,50,440);
+  ctx.fillText(`↑キーでジャンプホールド（1秒間静止）`,50,470);
 }
 
+//ゲーム開始
 function start(){
   game.state='gaming';
   game.bgm1.play();
   game.timer=setInterval(ticker,30);
 }
 
+//ゲームループ処理
 function ticker(){
-  //画面クリア
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  //背景
+  ctx.clearRect(0,0,canvas.width,canvas.height); //画面クリア
   moveBackGrounds();
   drawBackGrounds();
-  
-  //敵キャラクターの生成
   createEnemys();
-
-  //キャラクターの移動
-  moveDino(); //恐竜の移動
-  moveEnemys(); //敵キャラクタの移動
+  moveDino(); 
+  moveEnemys();
   moveFire();
-
-  //描画
-  drawEnemys(); //敵キャラクタの描画
-  drawDino(); //恐竜の描画
-  drawScore(); //スコアの描画
+  drawEnemys();
+  drawDino();
+  drawScore();
   drawFire();
   drawBarrier();
-
-  //あたり判定
+  drawSkillStatus();
   hitCheck();
-
   //カウンターの更新
   if(game.counter%6===0){
     game.score+=1;
@@ -96,6 +104,7 @@ function ticker(){
   game.enemyCountdown-=1;
 }
 
+//恐竜の生成
 function createDino(){
   game.dino={
     x:75,
@@ -104,10 +113,11 @@ function createDino(){
     width:game.image.dino.width,
     height:game.image.dino.height,
     image:game.image.dino,
-    jumpCount:0
+    jumpCount:0 //ジャンプ回数（2回まで）
   }
 }
 
+//背景の生成
 function createBackGround(){
   if(game.backGrounds.length===0){
     for(let x=0;x<=canvas.width;x+=200){
@@ -115,12 +125,13 @@ function createBackGround(){
         x:x,
         y:canvas.height,
         width:200,
-        moveX:-20-Math.floor(game.score/300)
+        moveX:-20-Math.floor(game.score/300) //スコアに応じて背景速度を変更
       });
     }
   }
 }
 
+//岩の生成
 function createStone(createX){
   game.enemys.push({
     x:createX,
@@ -132,6 +143,7 @@ function createStone(createX){
   });
 }
 
+//鳥の生成
 function createBird(delay=0){
   setTimeout(()=>{
    const minY=300;
@@ -149,6 +161,7 @@ function createBird(delay=0){
  },delay);
 }
 
+//敵キャラクターの生成
 function createEnemys(){
   if(game.enemyCountdown<=0){
     game.enemyCountdown=Math.max(20,60-Math.floor(game.score/40));
@@ -170,6 +183,7 @@ function createEnemys(){
   }
 }
 
+//火の生成
 function createFire(bird){
   game.fire.push({
     x:bird.x-bird.width/2,
@@ -177,7 +191,7 @@ function createFire(bird){
     width:game.image.fire.width,
     height:game.image.fire.height,
     moveX:-20-Math.floor(game.score/100),
-    moveY:0,
+    moveY:Math.random()*7+2,
     image:game.image.fire
   });
 }
@@ -187,6 +201,10 @@ function activateBarrier(){
   if(!game.barrierActive&&!game.barrierCooldown){
     game.barrierActive=true;
     game.barrierCooldown=true;
+
+    const now=Date.now();
+    game.barrierEndTime=now+game.barrierDuration; //バリア終了時間
+    game.barrierCooldownEndTime=now+game.barrierCooldownTime; //クールダウン終了時間
 
     setTimeout(()=>{
       game.barrierActive=false; //5秒後解除
@@ -198,6 +216,7 @@ function activateBarrier(){
   }
 }
 
+//背景の移動
 function moveBackGrounds(){
   for(const backGround of game.backGrounds){
     backGround.x+=backGround.moveX;
@@ -207,7 +226,10 @@ function moveBackGrounds(){
   }
 }
 
+//恐竜の移動
 function moveDino(){
+  if(game.jumpHoldActive)return;
+
   if(game.dino.y<game.image.dino.height/2){
     game.dino.y=game.image.dino.height/2;
     game.dino.moveY=0;
@@ -222,6 +244,7 @@ function moveDino(){
   }
 }
 
+//敵キャラクターの移動
 function moveEnemys(){
   for(const enemy of game.enemys){
     enemy.x+=enemy.moveX;
@@ -245,19 +268,20 @@ function moveEnemys(){
   game.enemys=game.enemys.filter(enemy=>enemy.x>-enemy.width);
 }
 
+//火の移動
 function moveFire(){
   for(const fire of game.fire){
     fire.x+=fire.moveX;
     fire.y+=fire.moveY;
-    fire.moveY+=0.2;
   }
   game.fire=game.fire.filter(fire=>fire.x>-fire.width);
 }
 
+//背景の描画
 function drawBackGrounds(){
-  ctx.fillStyle='rgb(91, 181, 255)';
+  ctx.fillStyle='rgb(91, 181, 255)'; //空の色
   ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle='rgb(217, 189, 121)';
+  ctx.fillStyle='rgb(217, 189, 121)'; //地面の色
   for(const backGround of game.backGrounds){
     ctx.fillRect(backGround.x,backGround.y-15,backGround.width,15);
     ctx.fillRect(backGround.x+20,backGround.y-20,backGround.width-40,5);
@@ -265,26 +289,48 @@ function drawBackGrounds(){
   }
 }
 
+//恐竜の描画
 function drawDino(){
   ctx.drawImage(game.image.dino,game.dino.x-game.dino.width/2,game.dino.y-game.dino.height/2);
 }
 
+//敵キャラクターの描画
 function drawEnemys(){
   for(const enemy of game.enemys){
     ctx.drawImage(enemy.image,enemy.x-enemy.width/2,enemy.y-enemy.height/2);
   }
 }
 
+//火の描画
 function drawFire(){
   for(const fire of game.fire){
     ctx.drawImage(fire.image,fire.x-fire.width/2,fire.y-fire.height/2);
   }
 }
 
+//スコアの描画
 function drawScore(){
   ctx.fillStyle='black';
   ctx.font='24px serif';
-  ctx.fillText(`score:${game.score}`,10,30);
+  ctx.fillText(`score:${game.score}`,20,30);
+}
+
+//スキルの発動可能表示
+function drawSkillStatus(){
+  ctx.fillStyle='black';
+  ctx.font='40px serif';
+
+// ジャンプスキルのステータス表示
+  const now=Date.now();
+  if(game.jumpHoldActive){
+    const remaining=Math.max(0,Math.ceil((game.jumpHoldEndTime-now)/1000));
+    ctx.fillText(`Skill Active`,canvas.width-240,30);
+  }else if(game.jumpHoldCooldown){
+    const remaining=Math.max(0,Math.ceil((game.jumpHoldCooldownEndTime-now)/1000));
+    ctx.fillText(`Cooldown:${remaining}s`,canvas.width-270,30);
+  }else{
+    ctx.fillText(`Skill Ready!`,canvas.width-250,30);
+  }
 }
 
 //バリアの半円
@@ -302,6 +348,31 @@ function drawBarrier(){
   }
 }
 
+//ジャンプスキル
+function activateJumpHold(){
+  if(!game.jumpHoldActive&&!game.jumpHoldCooldown){
+    game.jumpHoldActive=true;
+    game.jumpHoldCooldown=true;
+
+    const now=Date.now();
+    game.jumpHoldEndTime=now+game.jumpHoldDuration;
+    game.jumpHoldCooldownEndTime=now+game.jumpHoldCooldownTime;
+
+    game.dino.moveY=0; //落下停止
+
+    setTimeout(()=>{
+      game.jumpHoldActive=false; //停止解除
+      game.dino.jumpCount=0; //停止解除ジャンプ回数リセット
+    },game.jumpHoldDuration);
+
+    // クールタイム解除
+    setTimeout(()=>{
+      game.jumpHoldCooldown=false; //10秒後クールタイム解除
+    },game.jumpHoldCooldownTime);
+  }
+}
+
+//あたり判定
 function hitCheck(){
   if(game.barrierActive)return;
 
@@ -333,6 +404,7 @@ function hitCheck(){
   }
 }
 
+//キーボード処理
 document.onkeydown=(e)=>{
   if(e.code==='Space'&&game.state==='init'){
     start();
@@ -347,5 +419,8 @@ document.onkeydown=(e)=>{
   }
   if(e.code==='ShiftLeft'||e.code==='ShiftRight'){
     activateBarrier();
+  }
+  if(e.code==='ArrowUp'){
+    activateJumpHold();
   }
 };

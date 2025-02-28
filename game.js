@@ -18,7 +18,7 @@ const game={
   barrierActive:false,
   barrierCooldown:false,
   barrierDuration:5000,
-  barrierCooldownTime:5000
+  barrierCooldownTime:10000
 };
 game.bgm1.loop=true;
 game.bgm1.volume=0.3;
@@ -94,6 +94,7 @@ function ticker(){
   drawScore();
   drawFire();
   drawBarrier();
+  drawBarrierCooldown();
   drawSkillStatus();
   hitCheck();
   //カウンターの更新
@@ -199,6 +200,7 @@ function createFire(bird){
 //バリア発動
 function activateBarrier(){
   if(!game.barrierActive&&!game.barrierCooldown){
+    console.log("バリア発動！"); //デバッグログ
     game.barrierActive=true;
     game.barrierCooldown=true;
 
@@ -208,11 +210,15 @@ function activateBarrier(){
 
     setTimeout(()=>{
       game.barrierActive=false; //5秒後解除
+      console.log("バリア解除"); //デバッグログ
     },game.barrierDuration);
 
     setTimeout(()=>{
       game.barrierCooldown=false; //５秒後クールダウン解除
+      console.log("バリアクールダウン解除"); //デバッグログ
     },game.barrierCooldownTime);
+  }else{
+    console.log("バリアはクールダウン中または既に発動中"); //デバッグログ
   }
 }
 
@@ -323,11 +329,10 @@ function drawSkillStatus(){
 // ジャンプスキルのステータス表示
   const now=Date.now();
   if(game.jumpHoldActive){
-    const remaining=Math.max(0,Math.ceil((game.jumpHoldEndTime-now)/1000));
     ctx.fillText(`Skill Active`,canvas.width-240,30);
   }else if(game.jumpHoldCooldown){
     const remaining=Math.max(0,Math.ceil((game.jumpHoldCooldownEndTime-now)/1000));
-    ctx.fillText(`Cooldown:${remaining}s`,canvas.width-270,30);
+    ctx.fillText(`Skill CD:${remaining}s`,canvas.width-250,30);
   }else{
     ctx.fillText(`Skill Ready!`,canvas.width-250,30);
   }
@@ -345,6 +350,20 @@ function drawBarrier(){
     );
     ctx.fillStyle='rgba(202, 237, 255, 0.4)';
     ctx.fill();
+  }
+}
+
+//バリアのクールダウン表示
+function drawBarrierCooldown(){
+  ctx.font='30px serif';
+  const now=Date.now();
+  if(game.barrierActive){
+    ctx.fillText(`Barrier Active`,canvas.width-250,70);
+  }else if(game.barrierCooldown){
+    const remaining=Math.max(0,Math.ceil((game.barrierCooldownEndTime-now)/1000));
+    ctx.fillText(`Barrier CD:${remaining}s`,canvas.width-250,70);
+  }else{
+    ctx.fillText(`Barrier Ready!`,canvas.width-250,70);
   }
 }
 
